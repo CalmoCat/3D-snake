@@ -7,8 +7,8 @@ using UnityEngine.UI;
 public class MainMenu : MonoBehaviour
 {
     [Header("Сцены")]
-    public int gameSceneBuildIndex = 0;
-    public int twoPlayerSceneBuildIndex = 1;
+    public int gameSceneBuildIndex = 1;
+    public int twoPlayerSceneBuildIndex = 2;
 
     [Header("Панели")]
     public GameObject mainPanel;

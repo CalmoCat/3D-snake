@@ -19,8 +19,8 @@
 ## Запуск в Unity
 
 1. Открыть папку `My project` в **Unity 6000.3.8f1**.
-2. Открыть сцену `Assets/Scenes/DemoScene.unity` для одиночной игры или `Assets/Scenes/TwoPlayerScene.unity` для split-screen.
-3. Нажать **Play**. Сцены не требуют префабов или ручной настройки ссылок.
+2. Открыть сцену `Assets/Scenes/MainMenuScene.unity` и нажать **Play** — появится меню с кнопками одиночной игры и DUO.
+3. Для прямого запуска можно открыть `Assets/Scenes/DemoScene.unity` или `Assets/Scenes/TwoPlayerScene.unity` и нажать **Play**. В сценах теперь есть реальные fallback-камеры, а игровая арена создаётся bootstrap-скриптом при запуске.
 4. Для пользовательской сцены добавить на пустой объект `RuntimeGameBootstrap` или `LocalMultiplayerBootstrap`; при необходимости снять `generateOnStart` и подключить свои объекты вручную.
 
 Старый Windows-билд в `Змейка 0.8/` оставлен как исходный артефакт. Он не может содержать новые скрипты, поэтому после изменений билд нужно собрать из Unity заново.
