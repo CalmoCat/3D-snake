@@ -1,5 +1,6 @@
 using UnityEngine;
 
+/// <summary>Совместимость со старыми префабами сегментов.</summary>
 public class SegmentCollisionHandler : MonoBehaviour
 {
     private SnakeBody snakeBody;
@@ -11,16 +12,12 @@ public class SegmentCollisionHandler : MonoBehaviour
         cachedSpawner = FindFirstObjectByType<CarSpawner>();
     }
 
-    void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Car"))
-        {
-            Destroy(other.gameObject);
-
-            if (cachedSpawner != null)
-            {
-                cachedSpawner.SpawnCar();
-            }
-        }
+        Car car = other.GetComponentInParent<Car>();
+        if (car == null || !car.TryConsume()) return;
+        if (snakeBody == null) snakeBody = GetComponentInParent<SnakeBody>();
+        snakeBody?.CutTail( Mathf.Max(2, snakeBody.SegmentCount - 1) );
+        cachedSpawner?.OnCarHitBody(car);
     }
 }
