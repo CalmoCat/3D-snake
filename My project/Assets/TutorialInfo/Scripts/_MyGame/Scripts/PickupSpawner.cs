@@ -11,12 +11,9 @@ public class PickupSpawner : MonoBehaviour
 
     private readonly List<Pickup> activePickups = new List<Pickup>();
     private float lastSpawnTime;
-    private Transform snakeHead;
 
     private void Start()
     {
-        SnakeMovement movement = FindFirstObjectByType<SnakeMovement>();
-        snakeHead = movement != null ? movement.transform : null;
         for (int i = 0; i < maxPickups; i++) SpawnPickup();
         lastSpawnTime = Time.time;
     }
@@ -34,17 +31,19 @@ public class PickupSpawner : MonoBehaviour
             lastSpawnTime = Time.time;
         }
 
-        if (GameManager.Instance != null && GameManager.Instance.MagnetTime > 0f && snakeHead != null)
+        if (GameManager.Instance != null && GameManager.Instance.MagnetTime > 0f && SnakeMovement.Players.Count > 0)
         {
             for (int i = 0; i < activePickups.Count; i++)
             {
                 Pickup pickup = activePickups[i];
                 if (pickup == null) continue;
-                Vector3 flatOffset = snakeHead.position - pickup.transform.position;
+                SnakeMovement nearest = FindNearestPlayer(pickup.transform.position);
+                if (nearest == null) continue;
+                Vector3 flatOffset = nearest.transform.position - pickup.transform.position;
                 flatOffset.y = 0f;
                 if (flatOffset.magnitude <= magnetRadius)
                 {
-                    pickup.transform.position = Vector3.MoveTowards(pickup.transform.position, snakeHead.position, 12f * Time.deltaTime);
+                    pickup.transform.position = Vector3.MoveTowards(pickup.transform.position, nearest.transform.position, 12f * Time.deltaTime);
                 }
             }
         }
@@ -72,6 +71,24 @@ public class PickupSpawner : MonoBehaviour
         activePickups.Add(pickup);
     }
 
+    private SnakeMovement FindNearestPlayer(Vector3 position)
+    {
+        SnakeMovement nearest = null;
+        float bestDistance = float.MaxValue;
+        for (int i = 0; i < SnakeMovement.Players.Count; i++)
+        {
+            SnakeMovement player = SnakeMovement.Players[i];
+            if (player == null) continue;
+            float distance = (player.transform.position - position).sqrMagnitude;
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                nearest = player;
+            }
+        }
+        return nearest;
+    }
+
     private Vector3 FindSafePosition()
     {
         for (int attempt = 0; attempt < 20; attempt++)
@@ -80,7 +97,8 @@ public class PickupSpawner : MonoBehaviour
                 Random.Range(-arenaSize.x * 0.5f, arenaSize.x * 0.5f),
                 0.9f,
                 Random.Range(-arenaSize.y * 0.5f, arenaSize.y * 0.5f));
-            if (snakeHead == null || Vector3.Distance(candidate, snakeHead.position) > 5f) return candidate;
+            SnakeMovement nearest = FindNearestPlayer(candidate);
+            if (nearest == null || Vector3.Distance(candidate, nearest.transform.position) > 5f) return candidate;
         }
         return new Vector3(0f, 0.9f, 12f);
     }

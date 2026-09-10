@@ -121,6 +121,20 @@ public class CarSpawner : MonoBehaviour
         return Instantiate(valid[Random.Range(0, valid.Count)]);
     }
 
+    private bool IsTooCloseToAnyPlayer(Vector3 position)
+    {
+        if (SnakeMovement.Players.Count > 0)
+        {
+            for (int i = 0; i < SnakeMovement.Players.Count; i++)
+            {
+                SnakeMovement player = SnakeMovement.Players[i];
+                if (player != null && Vector3.Distance(position, player.transform.position) < minDistanceFromHead) return true;
+            }
+            return false;
+        }
+        return snakeHead != null && Vector3.Distance(position, snakeHead.position) < minDistanceFromHead;
+    }
+
     private Transform GetSafeSpawnWaypoint()
     {
         if (allWaypoints.Count == 0) return null;
@@ -129,7 +143,7 @@ public class CarSpawner : MonoBehaviour
         {
             Transform point = allWaypoints[i];
             if (point == null) continue;
-            if (snakeHead != null && Vector3.Distance(point.position, snakeHead.position) < minDistanceFromHead) continue;
+            if (IsTooCloseToAnyPlayer(point.position)) continue;
 
             bool occupied = false;
             for (int c = 0; c < activeCars.Count; c++)

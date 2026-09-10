@@ -83,7 +83,8 @@ public class Car : MonoBehaviour
         SnakeSegment segment = other.GetComponentInParent<SnakeSegment>();
         if (segment != null && segment.segmentIndex >= 1)
         {
-            if (cachedSnakeBody != null) cachedSnakeBody.CutTail(segment.segmentIndex);
+            SnakeBody hitBody = segment.owner != null ? segment.owner : cachedSnakeBody;
+            if (hitBody != null) hitBody.CutTail(segment.segmentIndex);
             if (cachedSpawner != null) cachedSpawner.OnCarHitBody(this);
             consumed = true;
             Destroy(gameObject);
