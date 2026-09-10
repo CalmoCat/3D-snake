@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -7,7 +8,12 @@ using UnityEngine;
 /// </summary>
 public class SnakeMovement : MonoBehaviour
 {
+    private static readonly List<SnakeMovement> activePlayers = new List<SnakeMovement>();
     public static SnakeMovement Active { get; private set; }
+    public static IReadOnlyList<SnakeMovement> Players => activePlayers;
+
+    [Header("Игрок")]
+    [Range(0, 1)] public int playerIndex;
 
     [Header("Движение")]
     public float speed = 16f;
@@ -35,7 +41,8 @@ public class SnakeMovement : MonoBehaviour
 
     private void Awake()
     {
-        Active = this;
+        if (!activePlayers.Contains(this)) activePlayers.Add(this);
+        if (Active == null) Active = this;
         rb = GetComponent<Rigidbody>();
         cachedBody = GetComponentInParent<SnakeBody>();
         spawnPosition = transform.position;
@@ -53,7 +60,8 @@ public class SnakeMovement : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (Active == this) Active = null;
+        activePlayers.Remove(this);
+        if (Active == this) Active = activePlayers.Count > 0 ? activePlayers[0] : null;
     }
 
     private void Update()
@@ -65,18 +73,36 @@ public class SnakeMovement : MonoBehaviour
             return;
         }
 
-        horizontalInput = Mathf.Clamp(Input.GetAxisRaw("Horizontal"), -1f, 1f);
-        if (useMouseSteering && Mathf.Abs(horizontalInput) < 0.05f)
+        horizontalInput = ReadTurnInput();
+        if (playerIndex == 0 && useMouseSteering && Mathf.Abs(horizontalInput) < 0.05f)
         {
             float center = Screen.width * 0.5f;
             horizontalInput = Mathf.Clamp((Input.mousePosition.x - center) / Mathf.Max(1f, center), -1f, 1f);
         }
 
-        bool wantsBoost = Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.LeftShift);
+        bool wantsBoost = playerIndex == 0
+            ? Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.LeftShift)
+            : Input.GetKey(KeyCode.Keypad0) || Input.GetKey(KeyCode.RightShift);
         IsBoosting = wantsBoost && boostEnergy > 0.02f;
         if (IsBoosting) boostEnergy = Mathf.Max(0f, boostEnergy - boostDrain * Time.deltaTime);
         else boostEnergy = Mathf.Min(maxBoostEnergy, boostEnergy + boostRecharge * Time.deltaTime);
         graceTimer = Mathf.Max(0f, graceTimer - Time.deltaTime);
+    }
+
+    private float ReadTurnInput()
+    {
+        if (playerIndex == 1)
+        {
+            float arrows = 0f;
+            if (Input.GetKey(KeyCode.LeftArrow)) arrows -= 1f;
+            if (Input.GetKey(KeyCode.RightArrow)) arrows += 1f;
+            return arrows;
+        }
+
+        float wasd = 0f;
+        if (Input.GetKey(KeyCode.A)) wasd -= 1f;
+        if (Input.GetKey(KeyCode.D)) wasd += 1f;
+        return wasd;
     }
 
     private void FixedUpdate()
@@ -116,7 +142,7 @@ public class SnakeMovement : MonoBehaviour
         {
             consumedCollision = true;
             if (cachedBody != null) cachedBody.AddSegment();
-            if (GameManager.Instance != null) GameManager.Instance.RegisterCarEaten();
+            if (GameManager.Instance != null) GameManager.Instance.RegisterCarEaten(this);
             CarSpawner spawner = FindFirstObjectByType<CarSpawner>();
             if (spawner != null) spawner.OnCarEaten(car);
             Invoke(nameof(ResetCollisionLock), 0.08f);
@@ -126,7 +152,7 @@ public class SnakeMovement : MonoBehaviour
         Pickup pickup = other.GetComponentInParent<Pickup>();
         if (pickup != null)
         {
-            pickup.Collect();
+            pickup.Collect(this);
             return;
         }
 
@@ -145,7 +171,9 @@ public class SnakeMovement : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (collision != null && collision.collider.GetComponentInParent<ArenaHazard>() != null)
+        if (collision == null) return;
+        if (collision.collider.GetComponentInParent<ArenaHazard>() != null ||
+            collision.collider.GetComponentInParent<SnakeMovement>() != null)
         {
             DamageOnce();
         }
@@ -155,7 +183,7 @@ public class SnakeMovement : MonoBehaviour
     {
         if (graceTimer > 0f) return;
         graceTimer = collisionGraceTime;
-        GameManager.Instance?.TakeDamage();
+        GameManager.Instance?.TakeDamage(this);
     }
 
     private void ResetCollisionLock()

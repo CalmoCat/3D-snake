@@ -172,7 +172,7 @@ public class GameManager : MonoBehaviour
         UpdateUI();
     }
 
-    public void RegisterCarEaten()
+    public void RegisterCarEaten(SnakeMovement collector = null)
     {
         CarsEaten++;
         Combo = Mathf.Clamp(Combo + 1, 1, 99);
@@ -182,7 +182,7 @@ public class GameManager : MonoBehaviour
         UpdateUI();
     }
 
-    public void CollectPickup(PickupType type, int value = 1)
+    public void CollectPickup(PickupType type, int value = 1, SnakeMovement collector = null)
     {
         if (State != RunState.Playing) return;
         PickupsCollected++;
@@ -190,7 +190,7 @@ public class GameManager : MonoBehaviour
         switch (type)
         {
             case PickupType.Growth:
-                SnakeBody body = FindFirstObjectByType<SnakeBody>();
+                SnakeBody body = collector != null ? collector.GetComponentInParent<SnakeBody>() : FindFirstObjectByType<SnakeBody>();
                 if (body != null) body.AddSegments(Mathf.Max(1, value));
                 AddScore(25);
                 ToastRequested?.Invoke("Рост +" + Mathf.Max(1, value));
@@ -225,6 +225,11 @@ public class GameManager : MonoBehaviour
 
     public void TakeDamage()
     {
+        TakeDamage(null);
+    }
+
+    public void TakeDamage(SnakeMovement source)
+    {
         if (!initialized || State != RunState.Playing || damageTimer > 0f) return;
         damageTimer = damageCooldown;
         Combo = 0;
@@ -234,7 +239,7 @@ public class GameManager : MonoBehaviour
         {
             ShieldTime = 0f;
             ToastRequested?.Invoke("Щит поглотил удар");
-            SnakeMovement.Active?.RespawnAfterHit(true);
+            (source != null ? source : SnakeMovement.Active)?.RespawnAfterHit(true);
             UpdateUI();
             return;
         }
@@ -248,9 +253,9 @@ public class GameManager : MonoBehaviour
         }
 
         ToastRequested?.Invoke("Осторожно! Жизни: " + Lives);
-        SnakeBody body = FindFirstObjectByType<SnakeBody>();
+        SnakeBody body = source != null ? source.GetComponentInParent<SnakeBody>() : FindFirstObjectByType<SnakeBody>();
         if (body != null) body.CutTail(Mathf.Max(2, body.SegmentCount - 2));
-        SnakeMovement.Active?.RespawnAfterHit(false);
+        (source != null ? source : SnakeMovement.Active)?.RespawnAfterHit(false);
         UpdateUI();
     }
 

@@ -38,14 +38,17 @@ public class Pickup : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.GetComponentInParent<SnakeMovement>() != null) Collect();
+        SnakeMovement movement = other.GetComponentInParent<SnakeMovement>();
+        if (movement != null) Collect(movement);
     }
 
-    public void Collect()
+    public void Collect() => Collect(null);
+
+    public void Collect(SnakeMovement collector)
     {
         if (collected) return;
         collected = true;
-        GameManager.Instance?.CollectPickup(type, value);
+        GameManager.Instance?.CollectPickup(type, value, collector);
         Destroy(gameObject);
     }
 }

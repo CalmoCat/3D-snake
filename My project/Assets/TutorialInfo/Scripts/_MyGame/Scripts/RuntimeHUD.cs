@@ -7,6 +7,7 @@ public class RuntimeHUD : MonoBehaviour
     public Text toastText;
     public Text hintText;
     public Image boostFill;
+    public Image secondBoostFill;
 
     private float toastTimer;
     private GameManager manager;
@@ -34,6 +35,10 @@ public class RuntimeHUD : MonoBehaviour
         if (boostFill != null && SnakeMovement.Active != null)
         {
             boostFill.fillAmount = SnakeMovement.Active.BoostEnergy01;
+        }
+        if (secondBoostFill != null && SnakeMovement.Players.Count > 1 && SnakeMovement.Players[1] != null)
+        {
+            secondBoostFill.fillAmount = SnakeMovement.Players[1].BoostEnergy01;
         }
 
         if (hintText != null && manager != null)

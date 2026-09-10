@@ -19,12 +19,14 @@ public static class GameSettings
     public static bool IsGameplayStarted = false;
     public static bool IsMuted = false;
     public static int SelectedDifficulty = 1;
+    public static int MapIndex = 0;
 
     private const string SpeedKey = "snake.speed";
     private const string RotationKey = "snake.rotation";
     private const string CarsKey = "snake.cars";
     private const string MuteKey = "snake.mute";
     private const string DifficultyKey = "snake.difficulty";
+    private const string MapKey = "snake.map";
     private static bool loaded;
 
     public static void Load()
@@ -37,6 +39,7 @@ public static class GameSettings
         MaxCarsOnMapValue = Mathf.Clamp(PlayerPrefs.GetInt(CarsKey, MaxCarsOnMapValue), MinCarsOnMap, MaxCarsOnMap);
         IsMuted = PlayerPrefs.GetInt(MuteKey, IsMuted ? 1 : 0) == 1;
         SelectedDifficulty = Mathf.Clamp(PlayerPrefs.GetInt(DifficultyKey, SelectedDifficulty), 0, 2);
+        MapIndex = Mathf.Clamp(PlayerPrefs.GetInt(MapKey, MapIndex), 0, ArenaMapLibrary.MapCount - 1);
     }
 
     public static void Save()
@@ -46,6 +49,7 @@ public static class GameSettings
         PlayerPrefs.SetInt(CarsKey, MaxCarsOnMapValue);
         PlayerPrefs.SetInt(MuteKey, IsMuted ? 1 : 0);
         PlayerPrefs.SetInt(DifficultyKey, SelectedDifficulty);
+        PlayerPrefs.SetInt(MapKey, MapIndex);
         PlayerPrefs.Save();
     }
 
@@ -56,6 +60,7 @@ public static class GameSettings
         MaxCarsOnMapValue = 8;
         IsMuted = false;
         SelectedDifficulty = 1;
+        MapIndex = 0;
         Save();
     }
 

@@ -6,8 +6,9 @@ using UnityEngine.UI;
 /// <summary>Меню без принудительного изменения Canvas и без отключения слайдеров.</summary>
 public class MainMenu : MonoBehaviour
 {
-    [Header("Сцена игры")]
-    public int gameSceneBuildIndex = 1;
+    [Header("Сцены")]
+    public int gameSceneBuildIndex = 0;
+    public int twoPlayerSceneBuildIndex = 1;
 
     [Header("Панели")]
     public GameObject mainPanel;
@@ -36,15 +37,25 @@ public class MainMenu : MonoBehaviour
 
     public void StartGame()
     {
+        LoadGameScene(gameSceneBuildIndex);
+    }
+
+    public void StartTwoPlayerGame()
+    {
+        LoadGameScene(twoPlayerSceneBuildIndex);
+    }
+
+    private void LoadGameScene(int sceneIndex)
+    {
         GameSettings.IsGameplayStarted = true;
         GameSettings.Save();
         Time.timeScale = 1f;
-        if (SceneManager.GetActiveScene().buildIndex == gameSceneBuildIndex)
+        if (SceneManager.GetActiveScene().buildIndex == sceneIndex)
         {
             HideMenu();
             return;
         }
-        SceneManager.LoadScene(gameSceneBuildIndex);
+        SceneManager.LoadScene(sceneIndex);
     }
 
     public void OpenSettings()
@@ -84,6 +95,7 @@ public class MainMenu : MonoBehaviour
     }
 
     public void OnStartButton() => StartGame();
+    public void OnTwoPlayerButton() => StartTwoPlayerGame();
     public void OnExitButton() => ExitGame();
     public void OnSettingsButton() => OpenSettings();
     public void OnMenuButton() => ShowMainPanel();
