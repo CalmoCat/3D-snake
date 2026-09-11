@@ -1,0 +1,122 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!129 &1
+PlayerSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 26
+  productGUID: 3d6f4f8d2e0b4ab39b44f0e2d1541a61
+  AndroidProfiler: 0
+  AndroidFilterTouchesWhenObscured: 0
+  defaultScreenOrientation: 4
+  targetDevice: 2
+  useOnDemandResources: 0
+  accelerometerFrequency: 60
+  companyName: CalmoCat
+  productName: Neon Runner
+  defaultScreenWidth: 1280
+  defaultScreenHeight: 720
+  defaultScreenWidthWeb: 960
+  defaultScreenHeightWeb: 600
+  m_StereoRenderingPath: 0
+  m_ActiveColorSpace: 0
+  unsupportedMSAAFallback: 0
+  m_MTRendering: 1
+  mipStripping: 0
+  numberOfMipsStripped: 0
+  m_StackTraceTypes: 010000000100000001000000010000000100000001000000
+  iosShowActivityIndicatorOnLoading: -1
+  androidShowActivityIndicatorOnLoading: -1
+  androidEnableBanner: 1
+  androidUseLowAccuracyLocation: 0
+  androidUseCustomKeystore: 0
+  androidGamepadSupportLevel: 0
+  chromeosInput: 1
+  androidRenderOutsideSafeArea: 1
+  androidTargetArchitectures: 1
+  androidTargetDevices: 0
+  androidSplashScreen: {fileID: 0}
+  androidKeystoreName:
+  androidKeyaliasName:
+  iOSLaunchScreeniPadType: 0
+  iOSDeviceRequirements: []
+  appleDeveloperTeamID:
+  iOSManualProvisioningProfileID:
+  iOSManualProvisioningProfileType: 0
+  appleEnableAutomaticSigning: 0
+  enableInternalProfiler: 0
+  logObjCUncaughtExceptions: 1
+  enableCrashReportAPI: 0
+  cameraUsageDescription:
+  locationUsageDescription:
+  microphoneUsageDescription:
+  switchNMEThermalState: 0
+  bluetoothUsageDescription:
+  webGLInitialMemorySize: 32
+  webGLMaximumMemorySize: 2048
+  webGLMemoryGrowthMode: 2
+  webGLPowerPreference: 2
+  scriptingDefineSymbols: {}
+  platformArchitecture: {}
+  scriptingBackend: {}
+  il2cppCompilerConfiguration: {}
+  managedStrippingLevel: {}
+  incrementalIl2cppBuild: {}
+  suppressCommonWarnings: 1
+  allowUnsafeCode: 0
+  useDeterministicCompilation: 1
+  additionalIl2CppArgs:
+  scriptingRuntimeVersion: 1
+  gcIncremental: 1
+  apiCompatibilityLevelPerPlatform: {}
+  m_RenderingPath: 1
+  mobileRenderingPath: 1
+  metroPackageVersion: 1.0
+  metroPackageName: Neon Runner
+  metroPackageDisplayName: Neon Runner
+  metroPackageDescription: Neon Runner
+  metroPackageLogo: {fileID: 0}
+  xboxOneDescription: Neon Runner
+  xboxOneGameConfig: {fileID: 0}
+  xboxOneKinect: 0
+  xboxOneEnable7thCore: 1
+  xboxOneEnableTypeOptimization: 0
+  xboxOnePresentImmediateThreshold: 0
+  bundleVersion: 1.0
+  preloadedAssets: []
+  m_BuildTargetPlatformIcons: []
+  m_BuildTargetPlatformSplashScreens: []
+  m_BuildTargetPlatformBatching: {}
+  m_BuildTargetPlatformGraphicsAPIs: {}
+  m_BuildTargetVRSettings: {}
+  m_AndroidBundleVersionCode: 1
+  m_AndroidMinSdkVersion: 22
+  m_AndroidTargetSdkVersion: 0
+  m_BuildTargetEnableVuforiaSettings: []
+  openGLRequireES31: 0
+  vulkanEnableSetSRGBWrite: 0
+  vulkanEnablePreTransform: 0
+  vulkanEnableLateAcquireNextImage: 0
+  vulkanEnableCommandBufferRecycling: 1
+  iPhoneStrippingLevel: 0
+  iPhoneScriptCallOptimization: 0
+  ForceInternetPermission: 0
+  ForceSDCardPermission: 0
+  keepLoadedShadersAlive: 0
+  StripEngineCode: 1
+  iPhoneSdkVersion: 988
+  iOSTargetOSVersionString: 12.0
+  tvOSSdkVersion: 0
+  tvOSRequireExtendedGameController: 0
+  tvOSTargetOSVersionString: 12.0
+  webGLCompressionFormat: 1
+  webGLLinkerTarget: 1
+  webGLThreadsSupport: 0
+  webGLDecompressionFallback: 0
+  applicationIdentifier:
+    Standalone: com.calmocat.neonrunner
+  buildNumber:
+    Standalone: 0
+  activeInputHandler: 0
+  switchMaxWorkerMultiple: 8
+  androidIsGame: 1
+  androidEnableTango: 0

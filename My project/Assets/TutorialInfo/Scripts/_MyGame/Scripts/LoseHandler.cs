@@ -2,34 +2,28 @@ using UnityEngine;
 
 public class LoseHandler : MonoBehaviour
 {
-    [Header("Настройки проигрыша")]
-    
-
-    [Tooltip("Тег для дома или других препятствий")]
+    [Tooltip("Тег старой сцены; новые препятствия используют ArenaHazard и не зависят от тегов.")]
     public string houseTag = "House";
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag(houseTag))
-        {
-            RestartGame();
-        }
+        if (IsHazard(other)) RestartGame();
     }
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (collision.gameObject.CompareTag(houseTag))
-        {
-            RestartGame();
-        }
+        if (collision != null && IsHazard(collision.collider)) RestartGame();
+    }
+
+    private bool IsHazard(Collider collider)
+    {
+        if (collider == null) return false;
+        if (collider.GetComponentInParent<ArenaHazard>() != null) return true;
+        try { return collider.CompareTag(houseTag); } catch (UnityException) { return false; }
     }
 
     public void RestartGame()
     {
-        Debug.Log("Столкновение! Потеря жизни...");
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.TakeDamage();
-        }
+        GameManager.Instance?.TakeDamage();
     }
 }

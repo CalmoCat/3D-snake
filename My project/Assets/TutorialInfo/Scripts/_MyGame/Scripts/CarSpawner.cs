@@ -1,296 +1,245 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 
+/// <summary>
+/// Пул трафика: поддерживает обычные префабы, но умеет создать аккуратные
+/// процедурные машины, поэтому демо-сцена не ломается без ассетов.
+/// </summary>
 public class CarSpawner : MonoBehaviour
 {
-    [Header("Префабы машин")]
-    [Tooltip("Массив префабов машин, которые будут спавниться")]
+    [Header("Префабы и маршрут")]
     public GameObject[] carPrefabs;
-
-    [Header("Система маршрутов")]
-    [Tooltip("Объект WaypointSystem, содержащий все точки маршрута")]
     public Transform waypointSystem;
 
-    [Header("Настройки спавна")]
-    [Tooltip("Максимальное количество машин на карте одновременно")]
-    public int maxCarsOnMap = 10;
+    [Header("Спавн")]
+    [Range(3, 18)] public int maxCarsOnMap = 8;
+    [Min(0.2f)] public float spawnDelay = 2.2f;
+    [Min(4f)] public float minDistanceFromHead = 12f;
+    public bool showDebugGizmos;
 
-    [Tooltip("Задержка между спавном новых машин (в секундах)")]
-    public float spawnDelay = 2f;
+    [Header("Движение")]
+    public float baseCarSpeed = 7f;
+    public float speedRandomRange = 1.5f;
 
-    [Tooltip("Минимальная дистанция от головы змеи для спавна новой машины")]
-    public float minDistanceFromHead = 10f;
-
-    [Tooltip("Включить визуализацию спавна (для отладки)")]
-    public bool showDebugGizmos = true;
-
-    [Header("Настройки движения машин")]
-    [Tooltip("Базовая скорость машин")]
-    public float baseCarSpeed = 8f;
-
-    [Tooltip("Разброс скорости машин (± от базовой)")]
-    public float speedRandomRange = 3f;
-
-    private List<Car> activeCars = new List<Car>();
-    private List<Transform> allWaypoints = new List<Transform>();
+    private readonly List<Car> activeCars = new List<Car>();
+    private readonly List<Transform> allWaypoints = new List<Transform>();
+    private readonly List<Transform> safeWaypoints = new List<Transform>();
     private Transform snakeHead;
     private float lastSpawnTime;
-    private int totalCarsSpawned = 0;
-    private SnakeMovement cachedSnakeMovement;
-    private static List<Transform> _tempSafeWaypoints = new List<Transform>();
+    private int totalCarsSpawned;
 
-    void Start()
+    private void Start()
     {
-        maxCarsOnMap = GameSettings.MaxCarsOnMapValue;
+        GameSettings.Load();
+        maxCarsOnMap = Mathf.Clamp(GameSettings.MaxCarsOnMapValue, GameSettings.MinCarsOnMap, GameSettings.MaxCarsOnMap);
         CollectAllWaypoints();
+        SnakeMovement movement = FindFirstObjectByType<SnakeMovement>();
+        snakeHead = movement != null ? movement.transform : null;
 
-        cachedSnakeMovement = FindFirstObjectByType<SnakeMovement>();
-        if (cachedSnakeMovement != null)
-        {
-            snakeHead = cachedSnakeMovement.transform;
-        }
-
-        if (carPrefabs.Length == 0)
-        {
-            return;
-        }
-
-        if (allWaypoints.Count == 0)
-        {
-            return;
-        }
-
-        for (int i = 0; i < maxCarsOnMap; i++)
-        {
-            SpawnCar();
-        }
-
+        for (int i = 0; i < maxCarsOnMap; i++) SpawnCar();
         lastSpawnTime = Time.time;
     }
 
-    void Update()
+    private void Update()
     {
-        maxCarsOnMap = GameSettings.MaxCarsOnMapValue;
+        if (GameManager.Instance != null && GameManager.Instance.State != GameManager.RunState.Playing) return;
+        for (int i = activeCars.Count - 1; i >= 0; i--)
+        {
+            if (activeCars[i] == null) activeCars.RemoveAt(i);
+        }
 
-        if (activeCars.Count < maxCarsOnMap && Time.time - lastSpawnTime >= spawnDelay)
+        maxCarsOnMap = Mathf.Clamp(GameSettings.MaxCarsOnMapValue, GameSettings.MinCarsOnMap, GameSettings.MaxCarsOnMap);
+        int targetCars = GetTargetCarCount();
+        if (activeCars.Count < targetCars && Time.time - lastSpawnTime >= spawnDelay / GameSettings.DifficultyTrafficMultiplier)
         {
             SpawnCar();
             lastSpawnTime = Time.time;
         }
     }
 
-    void CollectAllWaypoints()
+    private void CollectAllWaypoints()
     {
         allWaypoints.Clear();
-
-        if (waypointSystem != null)
+        if (waypointSystem == null) return;
+        foreach (Transform child in waypointSystem)
         {
-            foreach (Transform child in waypointSystem)
-            {
-                if (child.name.StartsWith("Waypoint") || child.name.Contains("Waypoint"))
-                {
-                    allWaypoints.Add(child);
-                }
-            }
+            if (child != null && child.name.StartsWith("Waypoint")) allWaypoints.Add(child);
         }
-
-        Debug.Log($"CarSpawner: Найдено Waypoint'ов: {allWaypoints.Count}");
     }
 
-    void FindSnakeHead()
+    public void RefreshWaypoints() => CollectAllWaypoints();
+
+    private int GetTargetCarCount()
     {
-        SnakeMovement snakeMovement = FindFirstObjectByType<SnakeMovement>();
-        if (snakeMovement != null)
-        {
-            snakeHead = snakeMovement.transform;
-        }
-        else
-        {
-            GameObject headObj = GameObject.FindGameObjectWithTag("SnakeHead");
-            if (headObj != null)
-                snakeHead = headObj.transform;
-        }
+        int levelBonus = GameManager.Instance != null ? Mathf.Min(4, Mathf.Max(0, GameManager.Instance.Level - 1) / 2) : 0;
+        return Mathf.Min(GameSettings.MaxCarsOnMap, maxCarsOnMap + levelBonus);
     }
 
     public void SpawnCar()
     {
-        if (carPrefabs.Length == 0)
+        if (allWaypoints.Count == 0 || activeCars.Count >= GetTargetCarCount()) return;
+        Transform spawnPoint = GetSafeSpawnWaypoint();
+        if (spawnPoint == null) return;
+
+        GameObject carObject = ChoosePrefab();
+        if (carObject == null) carObject = CreateDefaultCar();
+        else carObject = Instantiate(carObject, spawnPoint.position, spawnPoint.rotation);
+
+        carObject.transform.position = spawnPoint.position;
+        carObject.transform.rotation = spawnPoint.rotation;
+        Car car = carObject.GetComponent<Car>();
+        if (car == null) car = carObject.AddComponent<Car>();
+        car.waypointSystem = waypointSystem;
+        float levelMultiplier = GameManager.Instance == null ? 1f : 1f + Mathf.Min(0.6f, Mathf.Max(0, GameManager.Instance.Level - 1) * 0.05f);
+        car.moveSpeed = Mathf.Max(2f, (baseCarSpeed + Random.Range(-speedRandomRange, speedRandomRange)) * GameSettings.DifficultyTrafficMultiplier * levelMultiplier);
+        car.SetStartWaypointIndex(allWaypoints.IndexOf(spawnPoint));
+        TrySetTag(carObject, "Car");
+
+        Collider collider = carObject.GetComponent<Collider>();
+        if (collider == null)
         {
-            return;
+            BoxCollider box = carObject.AddComponent<BoxCollider>();
+            box.isTrigger = true;
         }
+        else collider.isTrigger = true;
 
-        if (allWaypoints.Count == 0)
-        {
-            Debug.LogWarning("CarSpawner: Нет Waypoint'ов для спавна!");
-            return;
-        }
+        Rigidbody body = carObject.GetComponent<Rigidbody>();
+        if (body == null) body = carObject.AddComponent<Rigidbody>();
+        body.isKinematic = true;
+        body.useGravity = false;
 
-        Transform spawnWaypoint = GetSafeSpawnWaypoint();
-
-        if (spawnWaypoint == null)
-        {
-            Debug.LogWarning("CarSpawner: Не удалось найти безопасный Waypoint для спавна!");
-            return;
-        }
-
-        GameObject carPrefab = carPrefabs[Random.Range(0, carPrefabs.Length)];
-
-        GameObject newCar = Instantiate(carPrefab, spawnWaypoint.position, spawnWaypoint.rotation);
-
-        Car carScript = newCar.GetComponent<Car>();
-        if (carScript == null)
-            carScript = newCar.AddComponent<Car>();
-
-        carScript.waypointSystem = waypointSystem;
-        carScript.moveSpeed = baseCarSpeed + Random.Range(-speedRandomRange, speedRandomRange);
-
-        int startIndex = allWaypoints.IndexOf(spawnWaypoint);
-        carScript.SetStartWaypointIndex(startIndex);
-
-        newCar.tag = "Car";
-
-        if (newCar.GetComponent<Collider>() == null)
-        {
-            BoxCollider col = newCar.AddComponent<BoxCollider>();
-            col.isTrigger = true;
-        }
-
-        activeCars.Add(carScript);
+        activeCars.Add(car);
         totalCarsSpawned++;
-
-        if (showDebugGizmos)
-        {
-            Debug.Log($"CarSpawner: Спавнена машина {totalCarsSpawned} в точке {spawnWaypoint.name}. Активных машин: {activeCars.Count}");
-        }
     }
 
-    Transform GetSafeSpawnWaypoint()
+    private GameObject ChoosePrefab()
     {
-        if (snakeHead == null)
-        {
-            return allWaypoints[Random.Range(0, allWaypoints.Count)];
-        }
+        if (carPrefabs == null || carPrefabs.Length == 0) return null;
+        List<GameObject> valid = new List<GameObject>();
+        for (int i = 0; i < carPrefabs.Length; i++) if (carPrefabs[i] != null) valid.Add(carPrefabs[i]);
+        if (valid.Count == 0) return null;
+        return Instantiate(valid[Random.Range(0, valid.Count)]);
+    }
 
-        _tempSafeWaypoints.Clear();
-
-        foreach (Transform wp in allWaypoints)
+    private bool IsTooCloseToAnyPlayer(Vector3 position)
+    {
+        if (SnakeMovement.Players.Count > 0)
         {
-            float distanceToHead = Vector3.Distance(wp.position, snakeHead.position);
-            if (distanceToHead >= minDistanceFromHead)
+            for (int i = 0; i < SnakeMovement.Players.Count; i++)
             {
-                _tempSafeWaypoints.Add(wp);
+                SnakeMovement player = SnakeMovement.Players[i];
+                if (player != null && Vector3.Distance(position, player.transform.position) < minDistanceFromHead) return true;
             }
+            return false;
         }
+        return snakeHead != null && Vector3.Distance(position, snakeHead.position) < minDistanceFromHead;
+    }
 
-        if (_tempSafeWaypoints.Count > 0)
+    private Transform GetSafeSpawnWaypoint()
+    {
+        if (allWaypoints.Count == 0) return null;
+        safeWaypoints.Clear();
+        for (int i = 0; i < allWaypoints.Count; i++)
         {
-            return _tempSafeWaypoints[Random.Range(0, _tempSafeWaypoints.Count)];
-        }
+            Transform point = allWaypoints[i];
+            if (point == null) continue;
+            if (IsTooCloseToAnyPlayer(point.position)) continue;
 
-        Transform farthestWaypoint = null;
-        float maxDistance = 0f;
-
-        foreach (Transform wp in allWaypoints)
-        {
-            float distance = Vector3.Distance(wp.position, snakeHead.position);
-            if (distance > maxDistance)
+            bool occupied = false;
+            for (int c = 0; c < activeCars.Count; c++)
             {
-                maxDistance = distance;
-                farthestWaypoint = wp;
+                if (activeCars[c] != null && Vector3.Distance(activeCars[c].transform.position, point.position) < 4f)
+                {
+                    occupied = true;
+                    break;
+                }
             }
+            if (!occupied) safeWaypoints.Add(point);
         }
 
-        return farthestWaypoint;
+        if (safeWaypoints.Count > 0) return safeWaypoints[Random.Range(0, safeWaypoints.Count)];
+        return allWaypoints[Random.Range(0, allWaypoints.Count)];
     }
 
-    public void OnCarEaten(Car eatenCar)
+    private GameObject CreateDefaultCar()
     {
-        if (activeCars.Contains(eatenCar))
-            activeCars.Remove(eatenCar);
+        GameObject root = new GameObject("TrafficCar");
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        body.name = "Body";
+        body.transform.SetParent(root.transform);
+        body.transform.localPosition = new Vector3(0f, 0.55f, 0f);
+        body.transform.localScale = new Vector3(1.6f, 0.65f, 2.8f);
+        RemoveCollider(body);
 
-        if (showDebugGizmos)
+        Renderer renderer = body.GetComponent<Renderer>();
+        if (renderer != null)
         {
-            Debug.Log($"CarSpawner: Машина съедена. Активных машин: {activeCars.Count}");
+            Material paint = new Material(SurfaceShader());
+            paint.color = Color.HSVToRGB(Random.value, 0.65f, 0.9f);
+            renderer.material = paint;
         }
+
+        GameObject cabin = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cabin.name = "Cabin";
+        cabin.transform.SetParent(root.transform);
+        cabin.transform.localPosition = new Vector3(0f, 0.98f, -0.1f);
+        cabin.transform.localScale = new Vector3(1.2f, 0.45f, 1.2f);
+        RemoveCollider(cabin);
+        Renderer cabinRenderer = cabin.GetComponent<Renderer>();
+        if (cabinRenderer != null)
+        {
+            Material glass = new Material(SurfaceShader());
+            glass.color = new Color(0.08f, 0.15f, 0.2f);
+            cabinRenderer.material = glass;
+        }
+        return root;
     }
 
-    public void OnCarHitBody(Car hitCar)
-    {
-        if (activeCars.Contains(hitCar))
-            activeCars.Remove(hitCar);
+    private Shader SurfaceShader() => Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
 
-        if (showDebugGizmos)
-        {
-            Debug.Log($"CarSpawner: Машина врезалась в тело. Активных машин: {activeCars.Count}");
-        }
+    private void RemoveCollider(GameObject target)
+    {
+        Collider collider = target.GetComponent<Collider>();
+        if (collider != null) Destroy(collider);
+    }
+
+    private void TrySetTag(GameObject target, string tag)
+    {
+        try { target.tag = tag; } catch (UnityException) { }
+    }
+
+    public void OnCarEaten(Car car)
+    {
+        activeCars.Remove(car);
+    }
+
+    public void OnCarHitBody(Car car)
+    {
+        activeCars.Remove(car);
     }
 
     public void SpawnMultipleCars(int count)
     {
-        if (showDebugGizmos)
-        {
-            Debug.Log($"CarSpawner: Спавн {count} машин после отпадения сегментов");
-        }
-
-        for (int i = 0; i < count; i++)
-        {
-            Invoke(nameof(DelayedSpawn), i * 0.5f);
-        }
+        for (int i = 0; i < Mathf.Max(0, count); i++) Invoke(nameof(SpawnCar), i * 0.35f);
     }
 
-    void DelayedSpawn()
-    {
-        if (activeCars.Count < maxCarsOnMap)
-        {
-            SpawnCar();
-        }
-    }
-
-    public void RefreshWaypoints()
-    {
-        CollectAllWaypoints();
-    }
-
-    public int GetActiveCarCount()
-    {
-        return activeCars.Count;
-    }
-
-    public int GetTotalCarsSpawned()
-    {
-        return totalCarsSpawned;
-    }
+    public int GetActiveCarCount() => activeCars.Count;
+    public int GetTotalCarsSpawned() => totalCarsSpawned;
 
     public void ClearAllCars()
     {
-        foreach (Car car in activeCars)
-        {
-            if (car != null)
-                Destroy(car.gameObject);
-        }
+        for (int i = 0; i < activeCars.Count; i++) if (activeCars[i] != null) Destroy(activeCars[i].gameObject);
         activeCars.Clear();
     }
 
-    void OnDrawGizmos()
+    private void OnDrawGizmosSelected()
     {
-        if (!showDebugGizmos) return;
-
-        if (waypointSystem != null)
+        if (!showDebugGizmos || waypointSystem == null) return;
+        Gizmos.color = Color.cyan;
+        foreach (Transform child in waypointSystem)
         {
-            Gizmos.color = Color.green;
-            foreach (Transform child in waypointSystem)
-            {
-                if (child.name.StartsWith("Waypoint") || child.name.Contains("Waypoint"))
-                {
-                    Gizmos.DrawWireSphere(child.position, 0.5f);
-                }
-            }
+            if (child != null && child.name.StartsWith("Waypoint")) Gizmos.DrawWireSphere(child.position, 0.45f);
         }
-
-        if (snakeHead != null && Application.isPlaying)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(snakeHead.position, minDistanceFromHead);
-        }
+        if (snakeHead != null) Gizmos.DrawWireSphere(snakeHead.position, minDistanceFromHead);
     }
 }
